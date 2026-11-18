@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FAF7F2;
+  --foreground: #1e293b;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+/* Subtle Graph-paper grid pattern background */
+.bg-graph-paper {
+  background-color: #FAF7F2;
+  background-image: 
+    linear-gradient(to right, rgba(203, 195, 185, 0.28) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(203, 195, 185, 0.28) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+.bg-graph-paper-pink {
+  background-color: #FFF5F7;
+  background-image: 
+    linear-gradient(to right, rgba(244, 176, 183, 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(244, 176, 183, 0.35) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Washi tape / Highlighter label sticker effect */
+.sticker-tape {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  font-family: inherit;
+  background-color: #FDE2E4;
+  box-shadow: 1px 1px 0px rgba(0,0,0,0.06);
+  border-radius: 2px;
+}
+
+.sticker-tape-blue {
+  background-color: #DBEAFE;
+}
+
+.sticker-tape-green {
+  background-color: #D8F3DC;
+}
+
+.sticker-tape-lilac {
+  background-color: #E8DFF5;
+}
+
+/* Smooth marquee animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAF7F2;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
