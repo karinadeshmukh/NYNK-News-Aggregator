@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { HagueHeader } from '../components/HagueHeader';
-import { HagueTopBroadsheet } from '../components/HagueTopBroadsheet';
-import { HagueTopicRow } from '../components/HagueTopicRow';
-import { HagueSpotlightRow } from '../components/HagueSpotlightRow';
+import { MagazineHeader } from '../components/MagazineHeader';
+import { MagazineHeroMosaic } from '../components/MagazineHeroMosaic';
+import { MagazineMosaicGrid } from '../components/MagazineMosaicGrid';
+import { TopStoriesLeaderboard } from '../components/TopStoriesLeaderboard';
 import { DeepDiveReaderDrawer } from '../components/DeepDiveReaderDrawer';
 import { BlindspotRadarView } from '../components/BlindspotRadarView';
 import { MyNewsDietModal } from '../components/MyNewsDietModal';
@@ -18,7 +18,7 @@ import {
   fetchBlindspots,
   fetchPersonalizedClusters
 } from '../services/api';
-import { Loader2, Search, ArrowRight } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 
 export default function Home() {
   const { user, token, isAuthenticated } = useAuth();
@@ -26,6 +26,7 @@ export default function Home() {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [blindspots, setBlindspots] = useState<Blindspot[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string>('All');
+  const [mosaicFilter, setMosaicFilter] = useState<string>('All Stories');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentView, setCurrentView] = useState<'feed' | 'blindspots' | 'diet'>('feed');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -104,41 +105,38 @@ export default function Home() {
     );
   }, [clusters, searchQuery]);
 
-  // Lead Story
+  // Lead and secondary stories for Magazine Hero Mosaic
   const leadStory = filteredClusters[0] || null;
-  const leftStories = filteredClusters.slice(1, 3);
-  const latestStories = filteredClusters.slice(3, 8);
+  const secondaryStory1 = filteredClusters[1] || null;
+  const secondaryStory2 = filteredClusters[2] || null;
 
-  // Grouped by Topic for Broadsheet Rows
-  const techAndEnergyClusters = useMemo(() => {
-    return filteredClusters.filter(
-      (c) =>
-        c.topic?.toLowerCase().includes('tech') ||
-        c.topic?.toLowerCase().includes('economy') ||
-        c.title.toLowerCase().includes('energy') ||
-        c.title.toLowerCase().includes('semi')
-    );
+  // Filtered for mosaic grid
+  const mosaicStories = useMemo(() => {
+    let pool = filteredClusters.slice(3);
+    if (mosaicFilter === 'High Divergence') {
+      return pool.filter((c) => (c.diversity_score || 0) > 0.7);
+    }
+    if (mosaicFilter === 'Economy') {
+      return pool.filter((c) => c.topic?.toLowerCase().includes('economy'));
+    }
+    if (mosaicFilter === 'Governance') {
+      return pool.filter((c) => c.topic?.toLowerCase().includes('govern'));
+    }
+    if (mosaicFilter === 'Technology') {
+      return pool.filter((c) => c.topic?.toLowerCase().includes('tech'));
+    }
+    return pool;
+  }, [filteredClusters, mosaicFilter]);
+
+  // Ranked Top Stories for Sidebar
+  const leaderboardStories = useMemo(() => {
+    return [...filteredClusters].sort((a, b) => (b.article_ids?.length || 1) - (a.article_ids?.length || 1));
   }, [filteredClusters]);
-
-  const governanceClusters = useMemo(() => {
-    return filteredClusters.filter(
-      (c) =>
-        c.topic?.toLowerCase().includes('govern') ||
-        c.topic?.toLowerCase().includes('national') ||
-        c.title.toLowerCase().includes('bill') ||
-        c.title.toLowerCase().includes('voter')
-    );
-  }, [filteredClusters]);
-
-  const spotlightStory = filteredClusters[8] || filteredClusters[2] || leadStory;
-  const subSpotlightStories = filteredClusters.slice(9, 13).length > 0
-    ? filteredClusters.slice(9, 13)
-    : filteredClusters.slice(0, 4);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-gray-950">
-      {/* Hague Broadsheet Masthead Header */}
-      <HagueHeader
+    <div className="min-h-screen flex flex-col bg-gray-50/50 text-gray-900">
+      {/* USA TODAY / JANNAH STYLE HEADER */}
+      <MagazineHeader
         currentView={currentView}
         onSelectView={handleSelectView}
         selectedTopic={selectedTopic}
@@ -155,8 +153,8 @@ export default function Home() {
         onSearchChange={setSearchQuery}
       />
 
-      {/* MAIN BROADSHEET NEWSPAPER CONTAINER */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {currentView === 'blindspots' ? (
           /* BLINDSPOT RADAR VIEW */
           <BlindspotRadarView
@@ -166,88 +164,96 @@ export default function Home() {
           />
         ) : isLoading ? (
           <div className="py-28 flex flex-col items-center justify-center gap-3 text-gray-400">
-            <Loader2 className="w-8 h-8 animate-spin text-black" />
-            <span className="text-sm font-medium">Loading broadsheet edition...</span>
+            <Loader2 className="w-8 h-8 animate-spin text-[#0091FF]" />
+            <span className="text-sm font-semibold text-gray-600">Loading live intelligence edition...</span>
           </div>
         ) : filteredClusters.length === 0 ? (
           <div className="py-20 text-center text-gray-500 space-y-2">
             <Search className="w-8 h-8 mx-auto text-gray-300" />
             <p className="text-sm font-semibold">No reports match your inquiry.</p>
-            <p className="text-xs">Try selecting another topic from the masthead navigation.</p>
+            <p className="text-xs">Try selecting another topic from the category navigation bar.</p>
           </div>
-        ) : searchQuery.trim() || (selectedTopic !== 'All' && selectedTopic !== 'Home') ? (
-          /* FILTERED TOPIC VIEW: 4-COLUMN BROADSHEET GRID */
-          <div className="space-y-6">
-            <div className="border-b border-gray-900 pb-2">
-              <h2 className="font-bold text-sm uppercase tracking-wider text-gray-900">
-                {searchQuery ? `Search Results: "${searchQuery}"` : `${selectedTopic} Wire`}
-              </h2>
+        ) : searchQuery.trim() || (selectedTopic !== 'All' && selectedTopic !== 'Home' && selectedTopic !== 'News') ? (
+          /* FILTERED TOPIC / SEARCH VIEW */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8 space-y-6">
+              <div className="border-b border-gray-900 pb-2">
+                <h2 className="font-sans font-black text-sm uppercase tracking-wider text-black">
+                  {searchQuery ? `Search Results: "${searchQuery}"` : `${selectedTopic} Coverage`}
+                </h2>
+              </div>
+              <MagazineMosaicGrid
+                sectionTitle={`All Verified Stories in ${selectedTopic}`}
+                clusters={filteredClusters}
+                activeFilter={mosaicFilter}
+                onSelectFilter={setMosaicFilter}
+                onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
+              />
             </div>
-
-            <HagueTopicRow
-              sectionTitle={`Reports in ${selectedTopic}`}
-              clusters={filteredClusters}
-              onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
-            />
+            <div className="lg:col-span-4">
+              <TopStoriesLeaderboard
+                topStories={leaderboardStories}
+                recentStories={filteredClusters.slice(0, 5)}
+                onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
+              />
+            </div>
           </div>
         ) : (
-          /* MAIN BROADHEET NEWSPAPER FRONT PAGE (MATCHING HAGUE IMAGE) */
+          /* FULL USA TODAY + JANNAH STYLE MAGAZINE HOMEPAGE */
           <>
-            {/* 1. TOP 3-COLUMN HERO BROADSHEET SECTION */}
+            {/* 1. HERO MOSAIC (1 Giant Feature with quotes + 2 Stacked Tiles) */}
             {leadStory && (
-              <HagueTopBroadsheet
+              <MagazineHeroMosaic
                 leadStory={leadStory}
-                leftStories={leftStories}
-                latestStories={latestStories}
+                secondaryStory1={secondaryStory1}
+                secondaryStory2={secondaryStory2}
                 onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
               />
             )}
 
-            {/* 2. BUSINESS & TECHNOLOGY SECTION (4-COLUMN GRID) */}
-            <HagueTopicRow
-              sectionTitle="Business & Industrial Policy"
-              categoryTag="BUSINESS"
-              clusters={techAndEnergyClusters.length > 0 ? techAndEnergyClusters : filteredClusters.slice(2, 6)}
-              onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
-              onViewAll={() => setSelectedTopic('Technology')}
-            />
+            {/* 2. MAIN 2-COLUMN SPLIT: MOSAIC FEED ON LEFT, NUMBERED LEADERBOARD ON RIGHT */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column (8 cols): USA Today "Last News" Mosaic Grid */}
+              <div className="lg:col-span-8 space-y-8">
+                <MagazineMosaicGrid
+                  sectionTitle="Latest News & Perspective Matrix"
+                  clusters={mosaicStories.length > 0 ? mosaicStories : filteredClusters}
+                  activeFilter={mosaicFilter}
+                  onSelectFilter={setMosaicFilter}
+                  onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
+                />
+              </div>
 
-            {/* 3. NATIONAL GOVERNANCE SECTION (4-COLUMN GRID) */}
-            <HagueTopicRow
-              sectionTitle="Governance & Constitutional Oversight"
-              categoryTag="GOVERNANCE"
-              clusters={governanceClusters.length > 0 ? governanceClusters : filteredClusters.slice(4, 8)}
-              onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
-              onViewAll={() => setSelectedTopic('Governance')}
-            />
-
-            {/* 4. ASYMMETRIC MEDIA DIVERGENCE SPOTLIGHT (MATCHING POLITICS SECTION IN IMAGE) */}
-            {spotlightStory && (
-              <HagueSpotlightRow
-                sectionTitle="Politics & Cross-Perspective Analysis"
-                featuredStory={spotlightStory}
-                subStories={subSpotlightStories}
-                onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
-                onViewAll={() => setCurrentView('blindspots')}
-              />
-            )}
+              {/* Right Column (4 cols): Numbered 1-5 Top Stories + Live Stream */}
+              <div className="lg:col-span-4">
+                <TopStoriesLeaderboard
+                  topStories={leaderboardStories}
+                  recentStories={filteredClusters.slice(0, 5)}
+                  onOpenStory={(c) => handleOpenDeepDive(c, 'comparison')}
+                />
+              </div>
+            </div>
           </>
         )}
       </main>
 
-      {/* Broadsheet Footer */}
-      <footer className="border-t border-gray-200 bg-gray-50 py-10 mt-12 text-xs text-gray-500">
+      {/* Modern Magazine Footer */}
+      <footer className="border-t border-gray-200 bg-white py-8 mt-12 text-xs text-gray-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <div>
-            <span className="font-serif font-black text-lg text-black tracking-widest uppercase">
-              NYNK
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full bg-[#0091FF] flex items-center justify-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+            </div>
+            <span className="font-sans font-black text-sm text-black tracking-tight uppercase">
+              NYNK Intelligence
             </span>
-            <p className="mt-1 text-[11px] text-gray-500">
-              News You Need To Know • Transparent Media Intelligence & Framing Verification
-            </p>
+            <span className="text-gray-300">|</span>
+            <span className="text-[11px] text-gray-500">
+              Direct Publisher RSS Media Ingestion • Explainable Bias & Framing
+            </span>
           </div>
           <div className="text-[11px] text-gray-400">
-            Independent AI multi-perspective clustering across official records, left, center wire, and right publishers.
+            Powered by FastAPI microservice clustering & Node.js gateway.
           </div>
         </div>
       </footer>
