@@ -1,7 +1,7 @@
 import React from 'react';
 import { Cluster } from '../services/api';
 import { PerspectiveSpectrumBar } from './PerspectiveSpectrumBar';
-import { getClusterEditorialImage } from '../services/imageService';
+import { getClusterEditorialImage, onImageLoadError } from '../services/imageService';
 import { Layers } from 'lucide-react';
 
 interface MagazineMosaicGridProps {
@@ -67,6 +67,7 @@ export const MagazineMosaicGrid: React.FC<MagazineMosaicGridProps> = ({
                 <img
                   src={img}
                   alt={cluster.title}
+                  onError={(e) => onImageLoadError(e, cluster, idx + 4)}
                   className="absolute inset-0 w-full h-full object-cover editorial-img-zoom opacity-80 group-hover:opacity-90 transition-opacity"
                   loading="lazy"
                 />
@@ -107,6 +108,7 @@ export const MagazineMosaicGrid: React.FC<MagazineMosaicGridProps> = ({
                   <img
                     src={img}
                     alt={cluster.title}
+                    onError={(e) => onImageLoadError(e, cluster, idx + 4)}
                     className="w-full h-full object-cover editorial-img-zoom"
                     loading="lazy"
                   />

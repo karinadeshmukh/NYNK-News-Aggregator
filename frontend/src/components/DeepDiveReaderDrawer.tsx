@@ -238,6 +238,20 @@ export const DeepDiveReaderDrawer: React.FC<DeepDiveReaderDrawerProps> = ({
                             {art.source_name || (art as any).source}
                           </div>
 
+                          {art.image_url && (
+                            <div className="w-full aspect-[16/9] mb-3 rounded-lg overflow-hidden bg-gray-100">
+                              <img
+                                src={art.image_url}
+                                alt={art.title}
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          )}
+
                           <h3 className="font-serif font-bold text-base text-slate-900 mb-3 leading-snug">
                             {art.title}
                           </h3>

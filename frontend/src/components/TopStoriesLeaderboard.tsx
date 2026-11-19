@@ -1,6 +1,6 @@
 import React from 'react';
 import { Cluster } from '../services/api';
-import { getClusterEditorialImage } from '../services/imageService';
+import { getClusterEditorialImage, onImageLoadError } from '../services/imageService';
 import { Clock, TrendingUp } from 'lucide-react';
 
 interface TopStoriesLeaderboardProps {
@@ -57,6 +57,7 @@ export const TopStoriesLeaderboard: React.FC<TopStoriesLeaderboardProps> = ({
                   <img
                     src={thumb}
                     alt={cluster.title}
+                    onError={(e) => onImageLoadError(e, cluster, idx + 3)}
                     className="w-full h-full object-cover editorial-img-zoom"
                     loading="lazy"
                   />

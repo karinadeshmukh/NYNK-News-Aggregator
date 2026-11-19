@@ -1,7 +1,7 @@
 import React from 'react';
 import { Cluster } from '../services/api';
 import { PerspectiveSpectrumBar } from './PerspectiveSpectrumBar';
-import { getClusterEditorialImage } from '../services/imageService';
+import { getClusterEditorialImage, onImageLoadError } from '../services/imageService';
 import { Layers, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface MagazineHeroMosaicProps {
@@ -37,6 +37,7 @@ export const MagazineHeroMosaic: React.FC<MagazineHeroMosaicProps> = ({
           <img
             src={leadImg}
             alt={leadStory.title}
+            onError={(e) => onImageLoadError(e, leadStory, 0)}
             className="absolute inset-0 w-full h-full object-cover editorial-img-zoom opacity-80 group-hover:opacity-90 transition-opacity"
             loading="eager"
           />
@@ -108,6 +109,7 @@ export const MagazineHeroMosaic: React.FC<MagazineHeroMosaicProps> = ({
               <img
                 src={secImg1}
                 alt={secondaryStory1.title}
+                onError={(e) => onImageLoadError(e, secondaryStory1, 1)}
                 className="absolute inset-0 w-full h-full object-cover editorial-img-zoom opacity-80 group-hover:opacity-90 transition-opacity"
                 loading="eager"
               />
@@ -144,6 +146,7 @@ export const MagazineHeroMosaic: React.FC<MagazineHeroMosaicProps> = ({
               <img
                 src={secImg2}
                 alt={secondaryStory2.title}
+                onError={(e) => onImageLoadError(e, secondaryStory2, 2)}
                 className="absolute inset-0 w-full h-full object-cover editorial-img-zoom opacity-80 group-hover:opacity-90 transition-opacity"
                 loading="eager"
               />

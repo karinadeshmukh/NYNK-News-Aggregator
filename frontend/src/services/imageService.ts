@@ -1,3 +1,4 @@
+import React from 'react';
 import { Cluster } from './api';
 
 const TOPIC_IMAGES: Record<string, string[]> = {
@@ -49,14 +50,11 @@ const DEFAULT_EDITORIAL_IMAGES = [
   'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80'
 ];
 
-export const getClusterEditorialImage = (cluster: Cluster, index: number = 0): string => {
-  // 1. Direct Publisher Photo extracted from Media RSS feed
-  if (cluster.image_url && typeof cluster.image_url === 'string' && cluster.image_url.trim().startsWith('http')) {
-    return cluster.image_url;
+export const getFallbackEditorialImage = (cluster?: Cluster | null, index: number = 0): string => {
+  if (!cluster) {
+    return DEFAULT_EDITORIAL_IMAGES[index % DEFAULT_EDITORIAL_IMAGES.length];
   }
-
-  // 2. Fallback to topic-matched authentic editorial photography
-  const text = `${cluster.title} ${cluster.topic || ''} ${cluster.consensus_summary || ''}`.toLowerCase();
+  const text = `${cluster.title || ''} ${cluster.topic || ''} ${cluster.consensus_summary || ''}`.toLowerCase();
 
   if (text.includes('semi') || text.includes('chip') || text.includes('fab') || text.includes('hardware')) {
     return TOPIC_IMAGES.semiconductor[index % TOPIC_IMAGES.semiconductor.length];
@@ -78,4 +76,24 @@ export const getClusterEditorialImage = (cluster: Cluster, index: number = 0): s
   }
 
   return DEFAULT_EDITORIAL_IMAGES[index % DEFAULT_EDITORIAL_IMAGES.length];
+};
+
+export const getClusterEditorialImage = (cluster: Cluster, index: number = 0): string => {
+  // 1. Direct Publisher Photo extracted from Media RSS feed
+  if (cluster.image_url && typeof cluster.image_url === 'string' && cluster.image_url.trim().startsWith('http')) {
+    return cluster.image_url;
+  }
+
+  // 2. Fallback to topic-matched authentic editorial photography
+  return getFallbackEditorialImage(cluster, index);
+};
+
+export const onImageLoadError = (
+  e: React.SyntheticEvent<HTMLImageElement, Event>,
+  cluster?: Cluster | null,
+  index: number = 0
+) => {
+  const target = e.currentTarget;
+  target.onerror = null; // stop any infinite error loop
+  target.src = getFallbackEditorialImage(cluster, index);
 };

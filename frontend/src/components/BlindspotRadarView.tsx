@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Blindspot, Cluster } from '../services/api';
 import { PerspectiveSpectrumBar } from './PerspectiveSpectrumBar';
+import { getClusterEditorialImage, onImageLoadError } from '../services/imageService';
 import { ShieldAlert, Compass, EyeOff, ArrowRight, Layers } from 'lucide-react';
 
 interface BlindspotRadarViewProps {
@@ -105,6 +106,18 @@ export const BlindspotRadarView: React.FC<BlindspotRadarViewProps> = ({
                       Severity: {b.severity}
                     </span>
                   </div>
+
+                  {cluster && (
+                    <div className="w-full aspect-[16/9] mb-3 rounded-lg overflow-hidden bg-gray-100">
+                      <img
+                        src={getClusterEditorialImage(cluster, idx)}
+                        alt={cluster.title}
+                        onError={(e) => onImageLoadError(e, cluster, idx)}
+                        className="w-full h-full object-cover editorial-img-zoom"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
 
                   <h3 className="font-serif font-bold text-lg text-slate-900 mb-2 leading-snug">
                     {b.cluster_title || cluster?.title || `Story Cluster ${b.cluster_id}`}
