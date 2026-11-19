@@ -78,7 +78,7 @@ class MemoryStore {
       const mongoQuery: any = {};
       if (query.topic && query.topic !== 'All') mongoQuery.topic = query.topic;
       if (query.minDiversity) mongoQuery.diversity_score = { $gte: query.minDiversity };
-      return await Cluster.find(mongoQuery).sort({ diversity_score: -1, updated_at: -1 }).limit(query.limit || 50);
+      return await Cluster.find(mongoQuery).sort({ updated_at: -1, created_at: -1 }).limit(query.limit || 50);
     }
     let res = [...this.clusters];
     if (query.topic && query.topic !== 'All') {
@@ -87,7 +87,11 @@ class MemoryStore {
     if (query.minDiversity) {
       res = res.filter((c) => c.diversity_score >= (query.minDiversity || 0));
     }
-    res.sort((a, b) => (b.diversity_score || 0) - (a.diversity_score || 0) || new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime());
+    res.sort((a, b) => {
+      const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+      const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+      return timeB - timeA;
+    });
     return res.slice(0, query.limit || 50);
   }
 

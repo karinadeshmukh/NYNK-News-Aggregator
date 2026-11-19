@@ -13,6 +13,8 @@ import {
   Clock
 } from 'lucide-react';
 
+import { Cluster } from '../services/api';
+
 interface MagazineHeaderProps {
   currentView: 'feed' | 'blindspots' | 'diet';
   onSelectView: (view: 'feed' | 'blindspots' | 'diet') => void;
@@ -25,6 +27,7 @@ interface MagazineHeaderProps {
   blindspotCount: number;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  liveClusters?: Cluster[];
 }
 
 const CATEGORIES = ['News', 'Technology', 'Economy', 'Governance', 'National', 'World'];
@@ -40,7 +43,8 @@ export const MagazineHeader: React.FC<MagazineHeaderProps> = ({
   isRefreshing,
   blindspotCount,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  liveClusters = []
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -234,10 +238,22 @@ export const MagazineHeader: React.FC<MagazineHeaderProps> = ({
           </span>
           <div className="overflow-hidden relative w-full">
             <div className="animate-ticker flex items-center gap-8 text-[11px] font-medium text-gray-700 whitespace-nowrap">
-              <span>✦ Semiconductor Mission 2.0: Official Cabinet PIB release corroborated across wire services</span>
-              <span>✦ Clean Energy: India hits 200 GW milestone, Left media analyzes distribution bottlenecks</span>
-              <span>✦ Electoral Reform: High divergence detected between Right and Center coverage</span>
-              <span>✦ Transparent Multi-Perspective AI Clustering across Official, Left, Center, and Right</span>
+              {liveClusters && liveClusters.length > 0 ? (
+                liveClusters.slice(0, 8).map((cluster, i) => (
+                  <span key={cluster.cluster_id || i} className="inline-flex items-center gap-1.5 hover:text-[#0091FF] cursor-pointer">
+                    <span className="text-[#0091FF] font-bold">✦</span>
+                    <span className="font-semibold text-gray-900">{cluster.title}</span>
+                    <span className="text-gray-400">({cluster.topic || 'Wire'})</span>
+                  </span>
+                ))
+              ) : (
+                <>
+                  <span>✦ Semiconductor Mission 2.0: Official Cabinet PIB release corroborated across wire services</span>
+                  <span>✦ Clean Energy: India hits 200 GW milestone, Left media analyzes distribution bottlenecks</span>
+                  <span>✦ Electoral Reform: High divergence detected between Right and Center coverage</span>
+                  <span>✦ Transparent Multi-Perspective AI Clustering across Official, Left, Center, and Right</span>
+                </>
+              )}
             </div>
           </div>
         </div>

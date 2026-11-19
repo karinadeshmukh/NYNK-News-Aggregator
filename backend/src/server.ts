@@ -65,23 +65,47 @@ app.get(['/', '/api'], (req, res) => {
 });
 
 export const startServer = async () => {
-  try {
-    // 1. Connect DB or fallback to Memory Store
-    await connectDB();
-
-    // 2. Seed initial multi-perspective news if not already present
-    await newsIngestionService.seedInitialMultiPerspectiveNews();
-
-    // 3. Run initial clustering & blindspot detection
-    await clusterSyncService.syncClusters();
-  } catch (err: any) {
-    console.warn('[NYNK Server] Initialization notice:', err.message);
-  }
-
-  // 4. Start listening
+  // 1. Start listening immediately so port 5000 is open and responsive
   const server = app.listen(PORT, () => {
     console.log(`[NYNK Server] Running on http://localhost:${PORT}`);
   });
+
+  try {
+    // 2. Connect DB or fallback to Memory Store
+    await connectDB();
+
+    // 3. Ingest live breaking news feeds on boot
+    console.log('[NYNK Server] Ingesting real-time live news feeds...');
+    try {
+      const liveCount = await newsIngestionService.fetchLiveFeeds();
+      console.log(`[NYNK Server] Ingested ${liveCount} live news articles from publisher RSS feeds.`);
+    } catch (ingestErr: any) {
+      console.warn('[NYNK Server] Initial live feed fetch warning:', ingestErr.message);
+    }
+
+    // 4. Seed initial multi-perspective news if not already present
+    await newsIngestionService.seedInitialMultiPerspectiveNews();
+
+    // 5. Run clustering & blindspot detection on live + multi-perspective dataset
+    const clusterCount = await clusterSyncService.syncClusters();
+    console.log(`[NYNK Server] Synchronized ${clusterCount} active story clusters.`);
+
+    // 6. Automated live background sync interval (every 10 minutes)
+    setInterval(async () => {
+      try {
+        console.log('[NYNK AutoSync] Polling live publisher feeds...');
+        const newCount = await newsIngestionService.fetchLiveFeeds();
+        if (newCount > 0) {
+          const updatedClusters = await clusterSyncService.syncClusters();
+          console.log(`[NYNK AutoSync] Ingested ${newCount} fresh articles and updated ${updatedClusters} story clusters.`);
+        }
+      } catch (pollErr: any) {
+        console.warn('[NYNK AutoSync] Polling warning:', pollErr.message);
+      }
+    }, 10 * 60 * 1000);
+  } catch (err: any) {
+    console.warn('[NYNK Server] Initialization notice:', err.message);
+  }
 
   return server;
 };

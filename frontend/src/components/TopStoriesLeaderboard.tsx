@@ -9,6 +9,16 @@ interface TopStoriesLeaderboardProps {
   onOpenStory: (cluster: Cluster) => void;
 }
 
+const formatTimeAgo = (dateStr?: string) => {
+  if (!dateStr) return 'Just now';
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (isNaN(diff) || diff < 1) return 'Just now';
+  if (diff < 60) return `${diff}m ago`;
+  const hrs = Math.floor(diff / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+};
+
 export const TopStoriesLeaderboard: React.FC<TopStoriesLeaderboardProps> = ({
   topStories,
   recentStories,
@@ -91,7 +101,7 @@ export const TopStoriesLeaderboard: React.FC<TopStoriesLeaderboardProps> = ({
               <div className="text-[10px] text-gray-400 flex items-center gap-1">
                 <span className="font-semibold text-gray-700">{cluster.topic || 'Wire'}</span>
                 <span>•</span>
-                <span>{idx * 15 + 2}m ago</span>
+                <span>{formatTimeAgo(cluster.updated_at || cluster.created_at)}</span>
               </div>
             </div>
           ))}

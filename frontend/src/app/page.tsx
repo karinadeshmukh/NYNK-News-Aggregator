@@ -151,6 +151,7 @@ export default function Home() {
         blindspotCount={blindspots.length}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        liveClusters={clusters}
       />
 
       {/* MAIN CONTAINER */}

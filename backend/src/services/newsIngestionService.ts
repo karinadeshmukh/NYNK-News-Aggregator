@@ -13,16 +13,16 @@ interface RSSFeedConfig {
 
 const RSS_FEEDS: RSSFeedConfig[] = [
   {
-    name: 'Press Information Bureau (PIB)',
-    url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1',
-    category: 'Governance',
-    perspective_prior: 'Official'
+    name: 'Google News India',
+    url: 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en',
+    category: 'Top Stories',
+    perspective_prior: 'Center'
   },
   {
-    name: 'The Hindu',
-    url: 'https://www.thehindu.com/news/national/feeder/default.rss',
-    category: 'National',
-    perspective_prior: 'Left'
+    name: 'NDTV News',
+    url: 'https://feeds.feedburner.com/ndtvnews-top-stories',
+    category: 'Top Stories',
+    perspective_prior: 'Center'
   },
   {
     name: 'The Indian Express',
@@ -37,16 +37,34 @@ const RSS_FEEDS: RSSFeedConfig[] = [
     perspective_prior: 'Center'
   },
   {
-    name: 'Firstpost',
-    url: 'https://www.firstpost.com/commonfeeds/v1/cpt/rss/india.xml',
-    category: 'Politics',
-    perspective_prior: 'Right'
+    name: 'The Hindu',
+    url: 'https://www.thehindu.com/news/national/feeder/default.rss',
+    category: 'National',
+    perspective_prior: 'Left'
   },
   {
     name: 'BBC News (India)',
     url: 'https://feeds.bbci.co.uk/news/world/asia/india/rss.xml',
     category: 'World',
     perspective_prior: 'Center'
+  },
+  {
+    name: 'Google News Technology',
+    url: 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-IN&gl=IN&ceid=IN:en',
+    category: 'Technology',
+    perspective_prior: 'Center'
+  },
+  {
+    name: 'Google News Business',
+    url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-IN&gl=IN&ceid=IN:en',
+    category: 'Economy',
+    perspective_prior: 'Center'
+  },
+  {
+    name: 'Press Information Bureau (PIB)',
+    url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1',
+    category: 'Governance',
+    perspective_prior: 'Official'
   }
 ];
 
@@ -55,9 +73,11 @@ export class NewsIngestionService {
 
   constructor() {
     this.parser = new Parser({
-      timeout: 8000,
+      timeout: 10000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) NYNK/1.0 NewsAggregator'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        'Accept-Language': 'en-US,en;q=0.9'
       },
       customFields: {
         item: [
@@ -86,11 +106,11 @@ export class NewsIngestionService {
       const mediaList = item.mediaContent || item['media:content'];
       if (Array.isArray(mediaList) && mediaList.length > 0) {
         for (const m of mediaList) {
-          const u = m?.url || m?.$?.url;
+          const u = m?.url || m?.$?.url || m?.['@']?.url;
           if (u && typeof u === 'string' && u.startsWith('http')) return u;
         }
       } else if (mediaList && typeof mediaList === 'object') {
-        const u = mediaList.url || mediaList.$?.url;
+        const u = mediaList.url || mediaList.$?.url || mediaList['@']?.url;
         if (u && typeof u === 'string' && u.startsWith('http')) return u;
       }
 
@@ -98,19 +118,19 @@ export class NewsIngestionService {
       const thumbList = item.mediaThumbnail || item['media:thumbnail'];
       if (Array.isArray(thumbList) && thumbList.length > 0) {
         for (const t of thumbList) {
-          const u = t?.url || t?.$?.url;
+          const u = t?.url || t?.$?.url || t?.['@']?.url;
           if (u && typeof u === 'string' && u.startsWith('http')) return u;
         }
       } else if (thumbList && typeof thumbList === 'object') {
-        const u = thumbList.url || thumbList.$?.url;
+        const u = thumbList.url || thumbList.$?.url || thumbList['@']?.url;
         if (u && typeof u === 'string' && u.startsWith('http')) return u;
       }
 
       // 4. HTML img tag in content:encoded or description
       const htmlBody = item.contentEncoded || item['content:encoded'] || item.content || item.description || '';
-      const match = /<img[^>]+src=["'](https?:\/\/[^"'>]+)["']/i.exec(htmlBody);
+      const match = /<img[^>]+src=["']((?:https?:)?\/\/[^"'>]+)["']/i.exec(htmlBody);
       if (match && match[1]) {
-        return match[1];
+        return match[1].startsWith('//') ? `https:${match[1]}` : match[1];
       }
     } catch {
       // fall through if RSS structure has non-standard nesting
@@ -307,28 +327,41 @@ export class NewsIngestionService {
     for (const feed of RSS_FEEDS) {
       try {
         const parsed = await this.parser.parseURL(feed.url);
-        const items = (parsed.items || []).slice(0, 5); // take recent 5
+        const items = (parsed.items || []).slice(0, 8); // take recent 8 items per feed
 
         for (const item of items) {
           if (!item.title) continue;
 
-          const existingArticles = await store.getArticles({ limit: 100 });
+          let cleanTitle = item.title.trim();
+          let sourceName = feed.name;
+
+          // Extract authentic publisher from Google News syndicated titles (e.g. "Title - Publisher")
+          if (feed.name.startsWith('Google News') && cleanTitle.includes(' - ')) {
+            const parts = cleanTitle.split(' - ');
+            const extractedPublisher = parts[parts.length - 1].trim();
+            if (extractedPublisher && extractedPublisher.length < 40) {
+              sourceName = extractedPublisher;
+              cleanTitle = parts.slice(0, -1).join(' - ').trim();
+            }
+          }
+
+          const existingArticles = await store.getArticles({ limit: 500 });
           const isDuplicate = existingArticles.some(
-            (a) => a.title.toLowerCase() === item.title?.toLowerCase() || (item.link && a.url === item.link)
+            (a) => a.title.toLowerCase() === cleanTitle.toLowerCase() || (item.link && a.url === item.link)
           );
           if (isDuplicate) continue;
 
-          const cleanContent = item.contentSnippet || item.content || item.summary || '';
-          const bias = await aiClient.analyzeBias(item.title, cleanContent, feed.name);
+          const cleanContent = item.contentSnippet || item.content || item.summary || cleanTitle;
+          const bias = await aiClient.analyzeBias(cleanTitle, cleanContent, sourceName);
           const imageUrl = this.extractImageUrl(item);
 
           const articleId = `art_${uuidv4().substring(0, 8)}`;
           await store.saveArticle({
             id: articleId,
-            title: item.title,
+            title: cleanTitle,
             content: cleanContent,
-            summary: item.contentSnippet || item.title,
-            source_name: feed.name,
+            summary: item.contentSnippet || cleanTitle,
+            source_name: sourceName,
             source_category: feed.category,
             url: item.link || '',
             image_url: imageUrl,
@@ -337,13 +370,14 @@ export class NewsIngestionService {
             perspective: bias.perspective || feed.perspective_prior,
             sentiment: bias.sentiment,
             subjectivity: bias.subjectivity,
-            detected_keywords: bias.detected_keywords
+            detected_keywords: bias.detected_keywords,
+            topic: feed.category === 'Top Stories' ? 'General' : feed.category
           });
 
           totalImported++;
         }
       } catch (err: any) {
-        // Individual feed errors (e.g., network timeout or RSS structural quirks) logged without halting ingestion
+        // Individual feed errors logged without halting ingestion
         console.warn(`[Ingestion] Notice: feed "${feed.name}" skipped (${err.message}).`);
       }
     }
