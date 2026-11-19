@@ -58,8 +58,64 @@ export class NewsIngestionService {
       timeout: 8000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) NYNK/1.0 NewsAggregator'
+      },
+      customFields: {
+        item: [
+          ['media:content', 'mediaContent', { keepArray: true }],
+          ['media:thumbnail', 'mediaThumbnail', { keepArray: true }],
+          ['enclosure', 'enclosure'],
+          ['content:encoded', 'contentEncoded']
+        ]
       }
     });
+  }
+
+  // Extract direct publisher press photo from Media RSS tags, enclosures, or content img
+  private extractImageUrl(item: any): string {
+    try {
+      // 1. Standard RSS Enclosure (often contains image/jpeg or image/png)
+      if (item.enclosure && item.enclosure.url) {
+        const encUrl = item.enclosure.url;
+        const type = item.enclosure.type || '';
+        if (type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif)/i.test(encUrl)) {
+          return encUrl;
+        }
+      }
+
+      // 2. Media RSS: media:content tag
+      const mediaList = item.mediaContent || item['media:content'];
+      if (Array.isArray(mediaList) && mediaList.length > 0) {
+        for (const m of mediaList) {
+          const u = m?.url || m?.$?.url;
+          if (u && typeof u === 'string' && u.startsWith('http')) return u;
+        }
+      } else if (mediaList && typeof mediaList === 'object') {
+        const u = mediaList.url || mediaList.$?.url;
+        if (u && typeof u === 'string' && u.startsWith('http')) return u;
+      }
+
+      // 3. Media RSS: media:thumbnail tag
+      const thumbList = item.mediaThumbnail || item['media:thumbnail'];
+      if (Array.isArray(thumbList) && thumbList.length > 0) {
+        for (const t of thumbList) {
+          const u = t?.url || t?.$?.url;
+          if (u && typeof u === 'string' && u.startsWith('http')) return u;
+        }
+      } else if (thumbList && typeof thumbList === 'object') {
+        const u = thumbList.url || thumbList.$?.url;
+        if (u && typeof u === 'string' && u.startsWith('http')) return u;
+      }
+
+      // 4. HTML img tag in content:encoded or description
+      const htmlBody = item.contentEncoded || item['content:encoded'] || item.content || item.description || '';
+      const match = /<img[^>]+src=["'](https?:\/\/[^"'>]+)["']/i.exec(htmlBody);
+      if (match && match[1]) {
+        return match[1];
+      }
+    } catch {
+      // fall through if RSS structure has non-standard nesting
+    }
+    return '';
   }
 
   // Pre-seeded multi-perspective dataset covering 3 key stories from 4 angles each
@@ -79,6 +135,7 @@ export class NewsIngestionService {
         source_name: 'Press Information Bureau (PIB)',
         source_category: 'Government Press',
         url: 'https://pib.gov.in/PressReleasePage.aspx?PRID=2001',
+        image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 2),
         language: 'en',
         perspective: 'Official' as const,
@@ -92,6 +149,7 @@ export class NewsIngestionService {
         source_name: 'The Hindu',
         source_category: 'National Daily',
         url: 'https://thehindu.com/news/national/semiconductor-policy-water-rights',
+        image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 3),
         language: 'en',
         perspective: 'Left' as const,
@@ -105,6 +163,7 @@ export class NewsIngestionService {
         source_name: 'The Indian Express',
         source_category: 'National Daily',
         url: 'https://indianexpress.com/article/business/semiconductor-mission-global-chain',
+        image_url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 4),
         language: 'en',
         perspective: 'Center' as const,
@@ -118,6 +177,7 @@ export class NewsIngestionService {
         source_name: 'Swarajya',
         source_category: 'Cultural & Political Review',
         url: 'https://swarajyamag.com/economy/semiconductor-revolution-leadership',
+        image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 5),
         language: 'en',
         perspective: 'Right' as const,
@@ -133,6 +193,7 @@ export class NewsIngestionService {
         source_name: 'Press Information Bureau (PIB)',
         source_category: 'Government Press',
         url: 'https://pib.gov.in/PressReleasePage.aspx?PRID=2002',
+        image_url: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 6),
         language: 'en',
         perspective: 'Official' as const,
@@ -146,6 +207,7 @@ export class NewsIngestionService {
         source_name: 'The Wire',
         source_category: 'Independent Digital Media',
         url: 'https://thewire.in/energy/rooftop-solar-subsidies-ground-reality',
+        image_url: 'https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 7),
         language: 'en',
         perspective: 'Left' as const,
@@ -159,6 +221,7 @@ export class NewsIngestionService {
         source_name: 'Reuters',
         source_category: 'Global News Wire',
         url: 'https://reuters.com/business/energy/india-renewables-200gw-milestone',
+        image_url: 'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 8),
         language: 'en',
         perspective: 'Center' as const,
@@ -172,6 +235,7 @@ export class NewsIngestionService {
         source_name: 'OpIndia',
         source_category: 'Digital Media',
         url: 'https://opindia.com/news/economy/200gw-renewable-energy-milestone-modi',
+        image_url: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 9),
         language: 'en',
         perspective: 'Right' as const,
@@ -187,6 +251,7 @@ export class NewsIngestionService {
         source_name: 'Press Information Bureau (PIB)',
         source_category: 'Government Press',
         url: 'https://pib.gov.in/PressReleasePage.aspx?PRID=2003',
+        image_url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 10),
         language: 'en',
         perspective: 'Official' as const,
@@ -200,6 +265,7 @@ export class NewsIngestionService {
         source_name: 'Firstpost',
         source_category: 'Digital Media',
         url: 'https://firstpost.com/politics/electoral-reform-bill-border-voter-rolls',
+        image_url: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 11),
         language: 'en',
         perspective: 'Right' as const,
@@ -213,6 +279,7 @@ export class NewsIngestionService {
         source_name: 'Times of India',
         source_category: 'National Daily',
         url: 'https://timesofindia.indiatimes.com/india/voter-authentication-bill-parliament',
+        image_url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
         published_at: new Date(Date.now() - 3600000 * 12),
         language: 'en',
         perspective: 'Center' as const,
@@ -253,6 +320,7 @@ export class NewsIngestionService {
 
           const cleanContent = item.contentSnippet || item.content || item.summary || '';
           const bias = await aiClient.analyzeBias(item.title, cleanContent, feed.name);
+          const imageUrl = this.extractImageUrl(item);
 
           const articleId = `art_${uuidv4().substring(0, 8)}`;
           await store.saveArticle({
@@ -263,6 +331,7 @@ export class NewsIngestionService {
             source_name: feed.name,
             source_category: feed.category,
             url: item.link || '',
+            image_url: imageUrl,
             published_at: item.pubDate ? new Date(item.pubDate) : new Date(),
             language: 'en',
             perspective: bias.perspective || feed.perspective_prior,

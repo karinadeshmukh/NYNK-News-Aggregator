@@ -28,9 +28,13 @@ export class ClusterSyncService {
       // Summarize cluster
       const summaryRes = await aiClient.summarizeCluster(cl.cluster_id, cl.title, cl.articles);
 
-      // Infer topic from articles
+      // Infer topic & image from constituent articles
       const firstArt = articles.find((a) => a.id === cl.representative_article_id);
       const topic = (firstArt as any)?.topic || 'General';
+      const articleWithImg = cl.article_ids
+        .map((id) => articles.find((a) => a.id === id))
+        .find((a) => a && (a as any).image_url);
+      const imageUrl = (articleWithImg as any)?.image_url || (firstArt as any)?.image_url || '';
 
       // Save or update Cluster
       await store.saveCluster({
@@ -45,7 +49,8 @@ export class ClusterSyncService {
         key_facts: summaryRes.key_facts,
         perspective_breakdown: summaryRes.perspective_breakdown,
         coverage_divergence: summaryRes.coverage_divergence,
-        topic
+        topic,
+        image_url: imageUrl
       });
 
       // Update cluster_id in articles

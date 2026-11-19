@@ -8,6 +8,7 @@ export interface IArticle extends Document {
   source_name: string;
   source_category: string;
   url: string;
+  image_url?: string;
   published_at: Date;
   language: string;
   perspective: 'Left' | 'Center' | 'Right' | 'Official';
@@ -26,6 +27,7 @@ const ArticleSchema = new Schema<IArticle>({
   source_name: { type: String, required: true },
   source_category: { type: String, default: 'Mainstream' },
   url: { type: String, default: '' },
+  image_url: { type: String, default: '' },
   published_at: { type: Date, default: Date.now },
   language: { type: String, default: 'en' },
   perspective: { 

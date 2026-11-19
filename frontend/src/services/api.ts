@@ -6,6 +6,7 @@ export interface Article {
   source_name: string;
   source_category: string;
   url: string;
+  image_url?: string;
   published_at: string;
   language: string;
   perspective: 'Left' | 'Center' | 'Right' | 'Official';
@@ -42,6 +43,7 @@ export interface Cluster {
   perspective_breakdown?: PerspectiveSummaryDetail[];
   coverage_divergence?: string;
   topic?: string;
+  image_url?: string;
   created_at?: string;
   updated_at?: string;
 }

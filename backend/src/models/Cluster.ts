@@ -27,6 +27,7 @@ export interface ICluster extends Document {
   perspective_breakdown?: IPerspectiveSummaryDetail[];
   coverage_divergence?: string;
   topic?: string;
+  image_url?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -56,6 +57,7 @@ const ClusterSchema = new Schema<ICluster>({
   ],
   coverage_divergence: { type: String },
   topic: { type: String, default: 'General' },
+  image_url: { type: String, default: '' },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });

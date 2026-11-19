@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #ffffff;
+  --foreground: #111827;
 }
 
 body {
@@ -16,11 +16,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle editorial paper grain & grid accent */
-.editorial-grid {
-  background-color: #f8fafc;
-  background-image: radial-gradient(#cbd5e1 0.75px, transparent 0.75px);
-  background-size: 20px 20px;
+/* Authentic Newspaper Masthead and rules */
+.newspaper-rule {
+  border-top: 1px solid #e5e7eb;
+}
+
+.newspaper-double-rule {
+  border-top: 3px double #111827;
 }
 
 /* Custom sleek scrollbar */
@@ -32,25 +34,17 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d1d5db;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #9ca3af;
 }
 
-/* Marquee for breaking intelligence ticker */
-@keyframes ticker {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-50%); }
+/* Clean editorial image zoom on hover */
+.editorial-img-zoom {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-.animate-ticker {
-  display: flex;
-  width: 200%;
-  animation: ticker 35s linear infinite;
-}
-
-.animate-ticker:hover {
-  animation-play-state: paused;
+.group:hover .editorial-img-zoom {
+  transform: scale(1.03);
 }
