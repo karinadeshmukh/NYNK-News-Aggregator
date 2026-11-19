@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from '../components/Header';
 import { TopicFilter } from '../components/TopicFilter';
 import { ClusterCard } from '../components/ClusterCard';
-import { StoryComparisonModal } from '../components/StoryComparisonModal';
-import { BiasAnalysisModal } from '../components/BiasAnalysisModal';
-import { BlindspotAlertBanner } from '../components/BlindspotAlertBanner';
+import { HeroLeadStory } from '../components/HeroLeadStory';
+import { DeepDiveReaderDrawer } from '../components/DeepDiveReaderDrawer';
+import { BlindspotRadarView } from '../components/BlindspotRadarView';
+import { MyNewsDietModal } from '../components/MyNewsDietModal';
 import { AssistantDrawer } from '../components/AssistantDrawer';
 import { AuthModal } from '../components/AuthModal';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +18,17 @@ import {
   fetchBlindspots,
   fetchPersonalizedClusters
 } from '../services/api';
-import { Sparkles, Bookmark, User, Compass } from 'lucide-react';
+import {
+  Sparkles,
+  Layers,
+  Search,
+  Compass,
+  RefreshCw,
+  Loader2,
+  SlidersHorizontal,
+  Flame,
+  ShieldCheck
+} from 'lucide-react';
 
 const BASE_TOPICS = ['All', 'Technology', 'Economy', 'Governance', 'National', 'World'];
 
@@ -27,12 +38,15 @@ export default function Home() {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [blindspots, setBlindspots] = useState<Blindspot[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [currentView, setCurrentView] = useState<'feed' | 'blindspots' | 'diet'>('feed');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Modals & Drawers
-  const [comparingCluster, setComparingCluster] = useState<Cluster | null>(null);
-  const [inspectingCluster, setInspectingCluster] = useState<Cluster | null>(null);
+  // Deep Dive Reader Drawer & Modals
+  const [activeDeepDiveCluster, setActiveDeepDiveCluster] = useState<Cluster | null>(null);
+  const [deepDiveInitialTab, setDeepDiveInitialTab] = useState<'comparison' | 'consensus' | 'bias' | 'assistant'>('comparison');
+  const [isDietModalOpen, setIsDietModalOpen] = useState<boolean>(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [assistantFocusCluster, setAssistantFocusCluster] = useState<Cluster | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
@@ -82,12 +96,9 @@ export default function Home() {
     }
   };
 
-  const handleOpenComparison = (cluster: Cluster) => {
-    setComparingCluster(cluster);
-  };
-
-  const handleInspectBias = (cluster: Cluster) => {
-    setInspectingCluster(cluster);
+  const handleOpenDeepDive = (cluster: Cluster, tab: 'comparison' | 'consensus' | 'bias' | 'assistant' = 'comparison') => {
+    setActiveDeepDiveCluster(cluster);
+    setDeepDiveInitialTab(tab);
   };
 
   const handleAskAI = (cluster: Cluster) => {
@@ -95,10 +106,48 @@ export default function Home() {
     setIsAssistantOpen(true);
   };
 
+  const handleSelectView = (view: 'feed' | 'blindspots' | 'diet') => {
+    if (view === 'diet') {
+      setIsDietModalOpen(true);
+      return;
+    }
+    setCurrentView(view);
+  };
+
+  // Filtered clusters by search
+  const filteredClusters = useMemo(() => {
+    if (!searchQuery.trim()) return clusters;
+    const q = searchQuery.toLowerCase();
+    return clusters.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        (c.topic && c.topic.toLowerCase().includes(q)) ||
+        (c.consensus_summary && c.consensus_summary.toLowerCase().includes(q))
+    );
+  }, [clusters, searchQuery]);
+
+  // Lead Featured Story (highest outlet count / diversity)
+  const leadStory = useMemo(() => {
+    if (filteredClusters.length === 0) return null;
+    return filteredClusters.reduce((prev, curr) => {
+      const prevScore = (prev.article_ids?.length || 1) * (prev.diversity_score || 0.5);
+      const currScore = (curr.article_ids?.length || 1) * (curr.diversity_score || 0.5);
+      return currScore > prevScore ? curr : prev;
+    }, filteredClusters[0]);
+  }, [filteredClusters]);
+
+  // Remaining stories excluding lead story if in feed view and no search query
+  const gridStories = useMemo(() => {
+    if (searchQuery.trim() || !leadStory) return filteredClusters;
+    return filteredClusters.filter((c) => c.cluster_id !== leadStory.cluster_id);
+  }, [filteredClusters, leadStory, searchQuery]);
+
   return (
-    <div className="flex-1 flex flex-col bg-cream-100">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
       {/* Top Navigation */}
       <Header
+        currentView={currentView}
+        onSelectView={handleSelectView}
         onToggleAssistant={() => {
           setAssistantFocusCluster(null);
           setIsAssistantOpen(!isAssistantOpen);
@@ -107,193 +156,132 @@ export default function Home() {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         isRefreshing={isRefreshing}
         totalClusters={clusters.length}
+        blindspotCount={blindspots.length}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
-      {/* HERO SECTION */}
-      <section className="bg-graph-paper border-b-2 border-slate-900/10 pt-16 pb-20 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden">
-        <div className="max-w-4xl mx-auto flex flex-col items-center">
-          {/* Top sticker badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-[#FDE2E4] border border-rose-300 text-rose-950 uppercase tracking-wider mb-6 shadow-sm">
-            <span>⚡ MULTIPERSPECTIVE NEWS INTELLIGENCE</span>
+      {/* Editorial Intelligence Ticker */}
+      <div className="bg-white border-b border-slate-200/80 py-2 overflow-hidden select-none">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center gap-2 shrink-0 pr-4">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-bold uppercase tracking-wider text-slate-700 text-[11px]">Wire Ticker:</span>
           </div>
-
-          {/* Chunky Editorial Hero Headline with Tape Effect */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-serif font-black text-slate-900 tracking-tight leading-[1.08] mb-6">
-            the news <br />
-            <span className="bg-[#FDE2E4] px-4 py-1 inline-block -rotate-1 rounded-sm border border-rose-200 shadow-sm text-slate-900 my-1">
-              for critical thinkers
-            </span> <br />
-            from every angle.
-          </h1>
-
-          {/* Subtitle */}
-          <div className="max-w-2xl mx-auto space-y-3 mb-8">
-            <p className="text-sm sm:text-base font-serif font-bold text-slate-800 tracking-wide uppercase">
-              For The Overwhelmed, The Echo-Chamber Exhausted, And The Genuinely Curious.
-            </p>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
-              NYNK automatically compares coverage across Official government records (PIB), Left, Center, and Right media outlets to detect editorial framing differences and highlight coverage blindspots.
-            </p>
+          <div className="overflow-hidden relative w-full">
+            <div className="animate-ticker flex items-center gap-8 text-[11px] font-medium text-slate-600 whitespace-nowrap">
+              <span>✦ Official Records (Press Information Bureau)</span>
+              <span>✦ Wire Dispatches (Reuters, PTI)</span>
+              <span>✦ National Dailies (The Hindu, Indian Express, TOI)</span>
+              <span>✦ Independent Analysis (The Wire, Swarajya, Firstpost, OpIndia)</span>
+              <span>✦ Real-Time Semantic Clustering</span>
+              <span>✦ Framing Asymmetry Radar</span>
+              <span>✦ Official Records (Press Information Bureau)</span>
+              <span>✦ Wire Dispatches (Reuters, PTI)</span>
+              <span>✦ National Dailies (The Hindu, Indian Express, TOI)</span>
+              <span>✦ Independent Analysis (The Wire, Swarajya, Firstpost, OpIndia)</span>
+            </div>
           </div>
-
-          {/* Pill CTA buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={() => {
-                setAssistantFocusCluster(null);
-                setIsAssistantOpen(true);
-              }}
-              className="px-8 py-3 rounded-full text-xs sm:text-sm font-black text-slate-900 bg-white border-2 border-slate-900 shadow-retro hover:translate-x-0.5 hover:translate-y-0.5 transition flex items-center gap-2"
-            >
-              <Sparkles className="w-4 h-4 text-rose-500" />
-              <span>Explore With AI Assistant</span>
-            </button>
-
-            {!isAuthenticated && (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="px-6 py-3 rounded-full text-xs sm:text-sm font-bold text-slate-900 bg-[#E8DFF5] border-2 border-slate-900 shadow-retro-sm hover:translate-x-0.5 hover:translate-y-0.5 transition flex items-center gap-1.5"
-              >
-                <User className="w-4 h-4" />
-                <span>Join NYNK Club</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* MARQUEE RUNNING TAPE */}
-      <div className="bg-[#DCFCE7] border-y-2 border-slate-900/15 py-3 overflow-hidden select-none">
-        <div className="animate-marquee flex items-center gap-8 text-xs sm:text-sm font-extrabold uppercase tracking-widest text-slate-900">
-          <span>✦ NEWS YOU NEED TO KNOW</span>
-          <span>✦ PRESS INFORMATION BUREAU (PIB)</span>
-          <span>✦ LEFT CRITIQUE</span>
-          <span>✦ CENTER WIRE</span>
-          <span>✦ RIGHT PERSPECTIVE</span>
-          <span>✦ REAL-TIME CLUSTERING</span>
-          <span>✦ BLINDSPOT RADAR</span>
-          <span>✦ ZERO ECHO CHAMBERS</span>
-          <span>✦ EXPLAINABLE FRAMING METRICS</span>
-          <span>✦ NEWS YOU NEED TO KNOW</span>
-          <span>✦ PRESS INFORMATION BUREAU (PIB)</span>
-          <span>✦ LEFT CRITIQUE</span>
-          <span>✦ CENTER WIRE</span>
-          <span>✦ RIGHT PERSPECTIVE</span>
-          <span>✦ REAL-TIME CLUSTERING</span>
-          <span>✦ BLINDSPOT RADAR</span>
         </div>
       </div>
 
-      {/* MAIN CONTAINER */}
-      <main id="feed" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Blindspot Radar Banner */}
-        <BlindspotAlertBanner
-          blindspots={blindspots}
-          onSelectCluster={(clusterId) => {
-            const found = clusters.find((c) => c.cluster_id === clusterId);
-            if (found) handleOpenComparison(found);
-          }}
-        />
-
-        {/* Section Header: Stories Row */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="inline-block px-3 py-1 rounded-md bg-[#DBEAFE] border border-sky-300 text-xs font-bold text-sky-950 uppercase tracking-wider mb-2">
-              Multi-Angle Clustered Stories
-            </div>
-            <h2 className="font-serif font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">
-              Today's Key Developments
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600 mt-1">
-              Select any story to compare headlines, inspect framing bias, or query the AI assistant.
-            </p>
-          </div>
-
-          {/* Topic Filters */}
-          <TopicFilter
-            selectedTopic={selectedTopic}
-            onSelectTopic={setSelectedTopic}
-            availableTopics={activeTopics}
+      {/* MAIN VIEW CONTAINER */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        {currentView === 'blindspots' ? (
+          /* BLINDSPOT RADAR VIEW */
+          <BlindspotRadarView
+            blindspots={blindspots}
+            clusters={clusters}
+            onSelectCluster={(c) => handleOpenDeepDive(c, 'comparison')}
           />
-        </div>
-
-        {/* Story Clusters Pastel Cards Grid */}
-        {isLoading ? (
-          <div className="py-24 text-center flex flex-col items-center justify-center">
-            <div className="w-9 h-9 rounded-full border-3 border-slate-900 border-t-transparent animate-spin mb-4" />
-            <p className="font-serif font-bold text-slate-800">Synthesizing multi-perspective news clusters...</p>
-          </div>
-        ) : clusters.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-white border-2 border-slate-900/10 p-8 shadow-sm">
-            <p className="font-serif font-bold text-lg text-slate-800 mb-1">
-              {selectedTopic === 'Saved Stories'
-                ? 'No saved stories yet'
-                : 'No clusters in this category'}
-            </p>
-            <p className="text-xs text-slate-500">
-              {selectedTopic === 'Saved Stories'
-                ? 'Click the bookmark ribbon on any story card to save it to your personal reading list.'
-                : 'Try selecting "All" or click "Sync Feeds" above.'}
-            </p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {clusters.map((cluster, idx) => (
-              <ClusterCard
-                key={cluster.cluster_id}
-                cluster={cluster}
-                index={idx}
-                onCompare={handleOpenComparison}
-                onInspectBias={handleInspectBias}
+          /* REGULAR STORIES FEED VIEW */
+          <>
+            {/* Lead Story Spotlight (only when no search query active) */}
+            {!searchQuery.trim() && leadStory && selectedTopic === 'All' && (
+              <HeroLeadStory
+                cluster={leadStory}
+                onOpenDeepDive={(c) => handleOpenDeepDive(c, 'comparison')}
                 onAskAI={handleAskAI}
-                onRequireAuth={() => setIsAuthModalOpen(true)}
               />
-            ))}
-          </div>
+            )}
+
+            {/* Section Controls: Topic Pills & Stats */}
+            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+              <div>
+                <h2 className="font-serif font-bold text-2xl text-slate-900 tracking-tight flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-rose-600" />
+                  <span>{searchQuery ? `Search Results: "${searchQuery}"` : "Today's Verified Clustered Stories"}</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Comparing reporting angles across {clusters.length} multi-sourced news events. Flip perspectives directly on any card.
+                </p>
+              </div>
+
+              {/* Topic Filters */}
+              <TopicFilter
+                selectedTopic={selectedTopic}
+                onSelectTopic={setSelectedTopic}
+                availableTopics={activeTopics}
+              />
+            </div>
+
+            {/* Stories Grid */}
+            {isLoading ? (
+              <div className="py-24 flex flex-col items-center justify-center gap-3 text-slate-500">
+                <Loader2 className="w-8 h-8 animate-spin text-slate-700" />
+                <span className="text-sm font-semibold">Aggregating multi-perspective coverage...</span>
+              </div>
+            ) : gridStories.length === 0 ? (
+              <div className="py-16 text-center bg-white rounded-xl border border-slate-200 text-slate-500 space-y-2">
+                <Search className="w-8 h-8 mx-auto text-slate-300" />
+                <p className="text-sm font-semibold">No stories match your criteria.</p>
+                <p className="text-xs">Try selecting another topic filter or clearing your search query.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {gridStories.map((cluster, idx) => (
+                  <ClusterCard
+                    key={cluster.cluster_id || idx}
+                    cluster={cluster}
+                    index={idx}
+                    onOpenDeepDive={(c) => handleOpenDeepDive(c, 'comparison')}
+                    onAskAI={handleAskAI}
+                    onRequireAuth={() => setIsAuthModalOpen(true)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
 
-      {/* FOOTER */}
-      <footer className="mt-20 border-t-2 border-slate-900/10 bg-graph-paper-pink py-12 text-center text-slate-800">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-4">
-          <div className="font-serif font-black text-3xl text-slate-900 tracking-tight">
-            nynk.
-          </div>
-          <p className="text-xs sm:text-sm font-medium text-slate-700 max-w-lg">
-            Empowering informed decision-making through explainable media balance, transparent AI, and multi-perspective journalism.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold uppercase text-slate-700 pt-2">
-            <span>• Press Information Bureau (PIB)</span>
-            <span>• National Dailies</span>
-            <span>• Independent Digital Media</span>
-            <span>• Semantic Embeddings</span>
-          </div>
-          <p className="text-[11px] text-slate-500 pt-4">
-            © 2026 NYNK Intelligence. All perspectives accounted for.
-          </p>
-        </div>
-      </footer>
-
-      {/* Story Comparison Modal */}
-      <StoryComparisonModal
-        cluster={comparingCluster}
-        onClose={() => setComparingCluster(null)}
+      {/* Split-Screen Deep Dive Reader Drawer */}
+      <DeepDiveReaderDrawer
+        cluster={activeDeepDiveCluster}
+        initialTab={deepDiveInitialTab}
+        onClose={() => setActiveDeepDiveCluster(null)}
       />
 
-      {/* Bias Analysis Inspector Modal */}
-      <BiasAnalysisModal
-        cluster={inspectingCluster}
-        onClose={() => setInspectingCluster(null)}
+      {/* My News Diet Modal */}
+      <MyNewsDietModal
+        isOpen={isDietModalOpen}
+        onClose={() => setIsDietModalOpen(false)}
+        clusters={clusters}
+        onSelectCluster={(c) => {
+          setIsDietModalOpen(false);
+          handleOpenDeepDive(c, 'comparison');
+        }}
       />
 
-      {/* AI News Assistant Drawer */}
+      {/* Global AI Newsroom Assistant Drawer */}
       <AssistantDrawer
         isOpen={isAssistantOpen}
         onClose={() => setIsAssistantOpen(false)}
         activeCluster={assistantFocusCluster}
       />
 
-      {/* Authentication & Registration Modal */}
+      {/* Authentication Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

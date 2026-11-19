@@ -8,34 +8,38 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        cream: {
-          50: '#FDFBF9',
-          100: '#FAF7F2',
-          200: '#F4ECE1',
-          300: '#EAE0D0'
+        perspective: {
+          official: '#1e3a8a',      // PIB / Gov Navy
+          officialBg: '#eff6ff',
+          officialBorder: '#bfdbfe',
+          left: '#2563eb',          // Progressive Blue
+          leftBg: '#eef2ff',
+          leftBorder: '#c7d2fe',
+          center: '#64748b',        // Wire Slate
+          centerBg: '#f8fafc',
+          centerBorder: '#e2e8f0',
+          right: '#dc2626',         // Conservative Crimson
+          rightBg: '#fef2f2',
+          rightBorder: '#fecaca',
         },
-        pastel: {
-          pink: '#FDE2E4',
-          pinkDark: '#F4B0B7',
-          blue: '#E2ECE9',
-          sky: '#DBEAFE',
-          green: '#D8F3DC',
-          pistachio: '#CBE896',
-          lime: '#D9F99D',
-          lilac: '#E8DFF5',
-          peach: '#FCE1E4',
-          yellow: '#FEF9EF'
+        surface: {
+          base: '#ffffff',
+          subtle: '#f8fafc',
+          muted: '#f1f5f9',
+          border: '#e2e8f0',
+          borderSubtle: '#f1f5f9'
         }
       },
       fontFamily: {
-        serif: ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
-        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif']
+        serif: ['"Newsreader"', 'Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
+        sans: ['"Inter"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
       },
       boxShadow: {
-        'retro': '3px 3px 0px 0px rgba(15, 23, 42, 0.85)',
-        'retro-sm': '2px 2px 0px 0px rgba(15, 23, 42, 0.85)',
-        'retro-lg': '5px 5px 0px 0px rgba(15, 23, 42, 0.9)',
-        'soft': '0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02)'
+        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+        'card-hover': '0 8px 25px -4px rgba(0, 0, 0, 0.07), 0 4px 10px -2px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+        'drawer': '-10px 0 30px -5px rgba(0, 0, 0, 0.1), -4px 0 10px -2px rgba(0, 0, 0, 0.05)',
+        'dropdown': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)'
       }
     },
   },
